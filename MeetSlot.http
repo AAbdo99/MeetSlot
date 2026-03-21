@@ -1,0 +1,6 @@
+@MeetSlot_HostAddress = http://localhost:5182
+
+GET {{MeetSlot_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
