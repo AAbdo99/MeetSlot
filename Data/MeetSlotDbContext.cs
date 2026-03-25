@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace MeetSlot.Data
 {
-    public class MeetSlotDbContext : DbContext
+    public class MeetSlotDbContext : DbContext // DbContext-klassen for MeetSlot-applikasjonen, som representerer en session med databasen og gir tilgang til databasetabellene gjennom DbSet-egenskapene. Den konfigurerer også modellene og deres relasjoner i OnModelCreating-metoden.
     {
         public MeetSlotDbContext(DbContextOptions<MeetSlotDbContext> options)
             : base(options)
@@ -61,16 +61,15 @@ namespace MeetSlot.Data
 
             modelBuilder.Entity<Booking>(entity => // Konfigurerer Booking-modellen.
             {
-                entity.Property(b => b.StartTime)
+                entity.Property(b => b.StartTime) // StartTime lagres som timestamptz for å sikre konsistent UTC-håndtering i PostgreSQL.
                     .HasConversion(utcDateTimeConverter)
                     .HasColumnType("timestamp with time zone");
 
-                entity.Property(b => b.EndTime)
+                entity.Property(b => b.EndTime) // EndTime lagres også som timestamptz for samme UTC-strategi.
                     .HasConversion(utcDateTimeConverter)
                     .HasColumnType("timestamp with time zone");
 
-                // Legger til en sjekk-konstraint for å sikre at EndTime er etter StartTime.
-                entity.ToTable(t => t.HasCheckConstraint(
+                entity.ToTable(t => t.HasCheckConstraint(// Legger til en sjekk-konstraint for å sikre at EndTime er etter StartTime.
                     "CK_Bookings_EndTime_After_StartTime",
                     "\"EndTime\" > \"StartTime\""));
 
@@ -86,7 +85,7 @@ namespace MeetSlot.Data
             });
         }
 
-        private static DateTime NormalizeToUtc(DateTime value)
+        private static DateTime NormalizeToUtc(DateTime value) // Hjelpemetode for å normalisere DateTime-verdier til UTC før lagring i databasen, og sikre at alle tidsverdier håndteres konsistent som UTC.
         {
             if (value.Kind == DateTimeKind.Utc)
             {

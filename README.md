@@ -47,7 +47,7 @@ Dette inkluderer:
 I praksis betyr det ansvar for hvordan dataene struktureres, hvordan relasjonene mellom tabellene bygges opp, hvordan databasen opprettes og oppdateres gjennom migreringer, og hvordan vi sikrer at dataene folger riktige regler og begrensninger.
 
 ## Status
-Status per 19.03.2026.
+Status per 25.03.2026.
 
 Dette er gjort sa langt:
 - ASP.NET Core Web API-prosjekt er opprettet pa .NET 8
@@ -57,25 +57,36 @@ Dette er gjort sa langt:
   - `MeetingRoom`
   - `Booking`
 - Rolle-enum for `Admin` og `User` er laget
+- `MeetSlotDbContext` er satt opp og registrert i `Program.cs`
+- EF Core og PostgreSQL-provider er lagt til i prosjektet
+- Viktige database-regler er konfigurert:
+  - unik e-post for brukere
+  - unikt navn for møterom
+  - `Capacity > 0`
+  - `EndTime > StartTime`
+  - `DeleteBehavior.Restrict` pa relasjoner fra booking
+- Booking-tider lagres i UTC for konsistent tidshandtering
+- Forste migrering er opprettet: `MeetSlot_v1`
+- Migreringen er kjort mot PostgreSQL-databasen `meetslot`
+- Lokal connection string er flyttet til user-secrets i stedet for a ligge hardkodet i repoet
 - Prosjektet bygger uten errors
 
 Dette gjenstar:
-- opprette `DbContext` og bygge datalaget i `Data/`
-- legge til EF Core-pakker, migreringer og seed-data
-- sette opp PostgreSQL som maldatabase
-- eventuelt bruke SQLite for lokal utvikling
+- implementere seed-data for rom, brukere og eksempelbookinger
 - implementere JWT-autentisering og autorisasjon
 - lage rollebaserte API-endepunkter for rom, tilgjengelighet, booking og avbooking
+- lage logikk for a forhindre dobbeltbooking i bookingflyten
 - erstatte standard `weatherforecast`-endepunkt med faktisk MeetSlot-funksjonalitet
 - lage Docker-oppsett
+- legge til tester og forbedre API-dokumentasjon videre
 
 ## Neste steg
-1. Opprette `ApplicationDbContext` og registrere den i `Program.cs`
-2. Legge til EF Core og riktig databaseprovider, primart Npgsql
-3. Lage forste migrering og koble prosjektet mot database
-4. Implementere seed-data for rom, brukere og eksempelbookinger
-5. Definere constraints for relasjoner, obligatoriske felt og datavalidering
-6. Klargjore datalaget for videre arbeid med autentisering og bookinglogikk
+1. Implementere seed-data for rom, brukere og eksempelbookinger. Jeg fyller databasen med litt testdata automatisk, slik at teamet har noe a jobbe mot. Jeg legger inn noen moterom og en admin-bruker.
+2. Klargjore datalaget videre for bookinglogikk og tilgjengelighet
+3. Implementere JWT-autentisering og rollebasert tilgang
+4. Lage endepunkter for rom, tilgjengelighet, booking og avbestilling
+5. Legge til integrasjonstester og videre Swagger-polish
+6. Sette opp Docker og CI nar resten av API-flyten er pa plass
 
 ## Merknad
 Denne README-en er ment som en arbeidsfil for teamet underveis i utviklingen. Den kan senere erstattes med en mer formell README for innlevering, dokumentasjon eller publisering pa GitHub.
