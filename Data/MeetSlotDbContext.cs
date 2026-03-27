@@ -39,6 +39,13 @@ namespace MeetSlot.Data
                 entity.ToTable(t => t.HasCheckConstraint(// Legger til en sjekk-konstraint for å sikre at Capacity er større enn 0.
                     "CK_MeetingRooms_Capacity_Positive",
                     "\"Capacity\" > 0"));
+
+                // Seed-data for møterom slik at teamet har testdata i utvikling.
+                entity.HasData(
+                    new MeetingRoom { Id = 1, Name = "Nordic Room", Capacity = 4, Description = "Lite rom for standup og korte møter." },
+                    new MeetingRoom { Id = 2, Name = "Fjord Room", Capacity = 8, Description = "Mellomstort rom for teammøter." },
+                    new MeetingRoom { Id = 3, Name = "Aurora Room", Capacity = 12, Description = "Stort rom for workshops og planlegging." }
+                );
             });
 
             modelBuilder.Entity<AppUser>(entity => // Konfigurerer AppUser-modellen.
@@ -57,6 +64,15 @@ namespace MeetSlot.Data
 
                 entity.HasIndex(u => u.Email)
                     .IsUnique();
+
+                // Seed-data for admin-bruker som utgangspunkt i utvikling.
+                entity.HasData(new AppUser
+                {
+                    Id = 1,
+                    Email = "admin@meetslot.local",
+                    PasswordHash = "$2a$12$hQ4sA2nY5nYjEFfOeL4f9uD8jz6M9H0JQm3M1xwY9dCF2nB4P3sVi",
+                    Role = UserRole.Admin
+                });
             });
 
             modelBuilder.Entity<Booking>(entity => // Konfigurerer Booking-modellen.
