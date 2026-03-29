@@ -90,3 +90,180 @@ Dette gjenstar:
 
 ## Merknad
 Denne README-en er ment som en arbeidsfil for teamet underveis i utviklingen. Den kan senere erstattes med en mer formell README for innlevering, dokumentasjon eller publisering pa GitHub.
+
+
+
+
+
+
+# Student 3 – Timeslots, booking create/cancel, double-booking prevention
+
+## Opprettelse av DTO (CreateBookingDto)
+
+Før booking-endepunktet ble implementert, ble det opprettet en egen DTO-klasse kalt `CreateBookingDto`.
+
+DTO står for **Data Transfer Object** og brukes for å kontrollere hvilke data klienten sender inn til API-et.
+
+I stedet for å sende hele `Booking`-entiteten direkte, ble DTO brukt for å begrense input til kun nødvendige felt:
+
+* Title
+* StartTime
+* EndTime
+* MeetingRoomId
+* AppUserId
+
+Dette ble gjort for å:
+
+* unngå at klienten sender navigasjonsegenskaper som `MeetingRoom` og `AppUser`
+* redusere risiko for serialiseringsproblemer
+* gjøre input tydeligere i Swagger
+
+DTO-filen ble opprettet i prosjektmappen:    `Dtos/CreateBookingDto.cs`
+
+---
+
+## 1. POST - endepunkt for booking  `POST /api/Booking`
+
+Et `BookingController` ble opprettet for å håndtere bookinglogikken.
+
+Første implementasjon av `POST /api/Booking` gjorde følgende:
+
+* mottok bookingdata via `CreateBookingDto`
+* hentet valgt møterom fra databasen
+* hentet valgt bruker fra databasen
+* opprettet et nytt `Booking`-objekt
+* lagret bookingen med `_context.SaveChanges()`
+
+---
+
+### 1. Validering lagt til i booking-endepunktet
+
+Etter første test ble flere kontroller lagt til:
+
+#### Kontroll av møterom
+
+API-et sjekker om `MeetingRoomId` finnes i databasen.
+
+Hvis rommet ikke finnes: `BadRequest("Møterommet ble ikke funnet")`
+
+#### Kontroll av bruker
+
+API-et sjekker om `AppUserId` finnes i databasen.
+
+Hvis brukeren ikke finnes: `BadRequest("Brukeren ble ikke funnet")`
+
+#### Kontroll av tid
+
+API-et sjekker at sluttidspunkt er etter starttidspunkt.
+
+Hvis `EndTime <= StartTime`:
+**BadRequest("Slutttidspunkt må være etter starttidspunkt")**
+
+---
+
+### 2. Forebygging av dobbeltbooking
+
+Det ble lagt inn logikk for å forhindre at samme møterom bookes i overlappende tidsrom.
+
+Kontrollen ble gjort med:
+
+```csharp
+var hasConflict = _context.Bookings.Any(b =>
+    b.MeetingRoomId == dto.MeetingRoomId &&
+    dto.StartTime < b.EndTime &&
+    dto.EndTime > b.StartTime);
+```
+
+Hvis konflikten finnes:
+
+`BadRequest("Dette rommet er allerede booket for det valgte tidspunktet.")`
+
+Denne logikken sikrer at to bookinger ikke kan overlappe i samme møterom.
+
+---
+
+
+### 3. Testing i Swagger
+
+Endepunktet ble testet i Swagger med JSON-request.
+
+#### Gyldig booking
+
+- Booking ble lagret i databasen og verifisert i DBeaver. `200 OK`
+
+#### Ugyldig booking
+
+- Ved overlappende tidspunkt returnerte API-et: `400 Bad Request`
+
+med melding:
+
+`Dette rommet er allerede booket for det valgte tidspunktet.`
+
+Dette bekrefter at booking-logikken fungerer som forventet.
+
+
+
+## 2. DELETE - endepunkt for booking  `DELETE /api/Booking/{id}`
+
+Denne endpointen brukes for å slette en eksisterende booking fra databasen.  
+
+Endpointen søker først etter booking med gitt id.  
+Hvis booking ikke finnes, returneres en feil (`404 NotFound`).  
+Hvis booking finnes, fjernes den fra databasen og endringene lagres.  
+
+**Route:** `DELETE /api/Booking/{id}`
+
+**Eksempel:** `DELETE /api/Booking/1`
+
+**Resultat:**
+- booking slettes hvis den finnes
+- feil returneres hvis booking ikke eksisterer
+
+
+
+## 3. GET - endepunkt for booking  `GET /api/Booking`
+
+Denne endpointen brukes for å hente alle bookinger fra databasen.
+
+Systemet leser alle booking-objekter og returnerer dem som en liste.
+
+**Route:** `GET /api/Booking`
+
+**Resultat:**
+- returnerer alle registrerte bookinger
+
+
+
+## 4. GET - endepunkt for booking  `GET /api/Booking/{id}`
+Denne endpointen brukes for å hente én booking basert på id.
+
+Systemet søker etter booking i databasen.  
+Hvis booking finnes, returneres objektet.  
+Hvis booking ikke finnes, returneres `404 NotFound`.  
+
+**Route:** `GET /api/Booking/{id}`
+
+**Eksempel:** `GET /api/Booking/1`
+
+**Resultat:**
+- returnerer valgt booking hvis den finnes
+- feil hvis booking ikke eksisterer
+
+## 5. GET - endepunkt for booking  `GET /api/Booking/available-slots?meetingRoomId={id}&date={yyyy-MM-dd}`
+
+### Available slots endpoint
+Denne endpointen brukes for å hente ledige tider for et møterom på en valgt dato.
+
+Systemet oppretter først mulige timeslots innenfor arbeidstiden.
+Deretter sammenlignes disse med eksisterende bookinger for å finne hvilke slots som er ledige.
+
+**Route:** `GET /api/Booking/available-slots?meetingRoomId={id}&date={yyyy-MM-dd}`
+
+**Eksempel:** `GET /api/Booking/available-slots?meetingRoomId=1&date=2026-03-29`
+
+**Resultat:**
+- returnerer ledige tider for valgt møterom
+- returnerer feil hvis møterommet ikke finnes
+
+
+

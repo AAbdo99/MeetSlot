@@ -12,3 +12,4 @@ obj/
 
 # Local secrets/config overrides
 appsettings.Local.json
+appsettings.json
