@@ -30,9 +30,9 @@ Teamet bruker Agile som rammeverk for a strukturere arbeidet. Samtidig har vi va
 Trello brukes som et visuelt arbeidsverktoy for a organisere oppgaver, folge fremdrift og skape oversikt over hva som skal gjores, hva som er under arbeid og hva som er ferdigstilt. Dette bidrar til bedre samarbeid, tydeligere prioriteringer og mer transparens i prosessen.
 
 ## Team og ansvarsfordeling
-- Ikram (1) - Auth/Security: JWT, roller (`Admin`/`User`) og tilgangsregler
+- Semir  (1) - Auth/Security: JWT, roller (`Admin`/`User`) og tilgangsregler
 - Ashwaq (2) - DB/EF Core: entities, migreringer, seed-data og constraints
-- Semir (3) - Availability/Booking logic: timeslots, opprette og avbestille booking, samt forebygging av dobbeltbooking
+- Ikram  (3) - Availability/Booking logic: timeslots, opprette og avbestille booking, samt forebygging av dobbeltbooking
 - Marion (4) - Testing/Docs/DevOps: integrasjonstester, Swagger-polish, README og CI/Docker
 
 ## Mitt ansvarsomrade
@@ -185,7 +185,8 @@ Denne logikken sikrer at to bookinger ikke kan overlappe i samme møterom.
 
 ### 3. Testing i Swagger
 
-Endepunktet ble testet i Swagger med JSON-request.
+Endepunktet ble testet i Postman og Swagger med JSON-request.
+![POST](./1.POST.png)
 
 #### Gyldig booking
 
@@ -205,7 +206,7 @@ Dette bekrefter at booking-logikken fungerer som forventet.
 
 ## 2. DELETE - endepunkt for booking  `DELETE /api/Booking/{id}`
 
-Denne endpointen brukes for å slette en eksisterende booking fra databasen.  
+Dette endpointet brukes for å slette en eksisterende booking fra databasen.  
 
 Endpointen søker først etter booking med gitt id.  
 Hvis booking ikke finnes, returneres en feil (`404 NotFound`).  
@@ -213,7 +214,8 @@ Hvis booking finnes, fjernes den fra databasen og endringene lagres.
 
 **Route:** `DELETE /api/Booking/{id}`
 
-**Eksempel:** `DELETE /api/Booking/1`
+**Eksempel:** `DELETE /api/Booking/7`
+![DELETE](2.DELETE.png)
 
 **Resultat:**
 - booking slettes hvis den finnes
@@ -223,11 +225,12 @@ Hvis booking finnes, fjernes den fra databasen og endringene lagres.
 
 ## 3. GET - endepunkt for booking  `GET /api/Booking`
 
-Denne endpointen brukes for å hente alle bookinger fra databasen.
+Dette endpointet brukes for å hente alle bookinger fra databasen.
 
 Systemet leser alle booking-objekter og returnerer dem som en liste.
 
 **Route:** `GET /api/Booking`
+![GET](3.GET.png)
 
 **Resultat:**
 - returnerer alle registrerte bookinger
@@ -235,7 +238,7 @@ Systemet leser alle booking-objekter og returnerer dem som en liste.
 
 
 ## 4. GET - endepunkt for booking  `GET /api/Booking/{id}`
-Denne endpointen brukes for å hente én booking basert på id.
+Dette endpointet brukes for å hente én booking basert på id.
 
 Systemet søker etter booking i databasen.  
 Hvis booking finnes, returneres objektet.  
@@ -243,8 +246,8 @@ Hvis booking ikke finnes, returneres `404 NotFound`.
 
 **Route:** `GET /api/Booking/{id}`
 
-**Eksempel:** `GET /api/Booking/1`
-
+**Eksempel:** `GET /api/Booking/5`
+![GET](4.GET:{id}.png)
 **Resultat:**
 - returnerer valgt booking hvis den finnes
 - feil hvis booking ikke eksisterer
@@ -252,15 +255,15 @@ Hvis booking ikke finnes, returneres `404 NotFound`.
 ## 5. GET - endepunkt for booking  `GET /api/Booking/available-slots?meetingRoomId={id}&date={yyyy-MM-dd}`
 
 ### Available slots endpoint
-Denne endpointen brukes for å hente ledige tider for et møterom på en valgt dato.
+Dette endpointet brukes for å hente ledige tider for et møterom på en valgt dato.
 
 Systemet oppretter først mulige timeslots innenfor arbeidstiden.
 Deretter sammenlignes disse med eksisterende bookinger for å finne hvilke slots som er ledige.
 
 **Route:** `GET /api/Booking/available-slots?meetingRoomId={id}&date={yyyy-MM-dd}`
 
-**Eksempel:** `GET /api/Booking/available-slots?meetingRoomId=1&date=2026-03-29`
-
+**Eksempel:** `GET /api/Booking/available-slots?meetingRoomId=1&date=2026-04-30`
+![Available](5.Available.png)
 **Resultat:**
 - returnerer ledige tider for valgt møterom
 - returnerer feil hvis møterommet ikke finnes
