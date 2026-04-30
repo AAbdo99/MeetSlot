@@ -24,6 +24,16 @@ Brukere skal i hovedsak kunne handtere egne bookinger, mens admin skal ha utvide
 - Verktøy: Git, GitHub og Docker
 - Planlegging og oppgaveflyt: Trello
 
+## JWT-token / Auth (notater)
+Prosjektet bruker .NET 8 (`net8.0`), så JWT-pakken må matche .NET 8.
+
+- Pakkereferanse: `Microsoft.AspNetCore.Authentication.JwtBearer`
+- Anbefalt versjon (for .NET 8): `8.0.x`
+- Kommando (eksempel):
+  - `dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer --version 8.0.1`
+
+Merk: Hvis man installerer en for ny versjon (f.eks. 10.x), kan man få feil som `NU1202` (ikke kompatibel med `net8.0`).
+
 ## Arbeidsmetode
 Teamet bruker Agile som rammeverk for a strukturere arbeidet. Samtidig har vi valgt en fleksibel tilnarming til roller, og fordeler oppgaver uten faste Scrum-roller.
 

@@ -1,13 +1,37 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 using MeetSlot.Data;
+using MeetSlot.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// DbContext henter aktiv connection string fra config/user-secrets.
+// Database
 builder.Services.AddDbContext<MeetSlotDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Controllers brukes videre når API-endepunktene kommer på plass.
+// TokenService registreres slik at den kan brukes i controllers via dependency injection
+builder.Services.AddScoped<TokenService>();
+
+// JWT-autentisering – forteller applikasjonen hvordan den skal validere tokens
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
+        };
+    });
+
+builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -16,13 +40,12 @@ var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
-    // Swagger er kun aktiv i development for enklere lokal testing.
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();
-// Authorization blir brukt når auth-delen kobles inn av resten av teamet.
+app.UseAuthentication(); // Må komme før UseAuthorization!
 app.UseAuthorization();
 app.MapControllers();
 
