@@ -16,6 +16,7 @@ Brukere skal i hovedsak kunne handtere egne bookinger, mens admin skal ha utvide
 
 ## Teknologistack
 - Backend: ASP.NET Core Web API (C#)
+- Frontend (enkel visning i dette steget): Razor Pages
 - Data: PostgreSQL
 - Lokal utvikling: SQLite kan brukes i development
 - ORM: Entity Framework Core, inkludert migreringer og seed-data
@@ -23,6 +24,9 @@ Brukere skal i hovedsak kunne handtere egne bookinger, mens admin skal ha utvide
 - API-dokumentasjon: Swagger/OpenAPI
 - Verktøy: Git, GitHub og Docker
 - Planlegging og oppgaveflyt: Trello
+
+### Hvorfor Razor i dette steget
+Vi har valgt a bruke Razor Pages for denne enkle frontend-delen fordi det er en teknologi vi har jobbet med i et tidligere emne, og vi onsker a vise at vi behersker den i praksis ogsa i dette prosjektet.
 
 ## JWT-token / Auth (notater)
 Prosjektet bruker .NET 8 (`net8.0`), så JWT-pakken må matche .NET 8.
@@ -78,6 +82,7 @@ Dette er gjort sa langt:
 - Booking-tider lagres i UTC for konsistent tidshandtering
 - Forste migrering er opprettet: `MeetSlot_v1`
 - Migreringen er kjort mot PostgreSQL-databasen `meetslot`
+- Seed-data for `AppUser` inkluderer nå både admin (`admin@meetslot.local`) og standardbruker (`user@meetslot.local`)
 - Lokal connection string er flyttet til user-secrets i stedet for a ligge hardkodet i repoet
 - Prosjektet bygger uten errors
 
@@ -91,7 +96,7 @@ Dette gjenstar:
 - legge til tester og forbedre API-dokumentasjon videre
 
 ## Neste steg
-1. Implementere seed-data for rom, brukere og eksempelbookinger. Jeg fyller databasen med litt testdata automatisk, slik at teamet har noe a jobbe mot. Jeg legger inn noen moterom og en admin-bruker.
+1. Implementere videre seed-data for rom, brukere og eksempelbookinger. Jeg fyller databasen med litt testdata automatisk, slik at teamet har noe a jobbe mot. Admin- og standardbruker er lagt inn, neste er flere eksempelbookinger.
 2. Klargjore datalaget videre for bookinglogikk og tilgjengelighet
 3. Implementere JWT-autentisering og rollebasert tilgang
 4. Lage endepunkter for rom, tilgjengelighet, booking og avbestilling
@@ -277,6 +282,102 @@ Deretter sammenlignes disse med eksisterende bookinger for å finne hvilke slots
 **Resultat:**
 - returnerer ledige tider for valgt møterom
 - returnerer feil hvis møterommet ikke finnes
+
+
+## Steg: Enkel Razor Pages frontend lokalt (`/rooms`)
+
+For dette steget lager vi en enkel, men mer visuell frontend-visning i samme prosjekt, slik at vi kan se møterommene direkte i nettleseren uten a bygge hele frontend-stacken først.
+
+Målet er:
+- en fungerende side pa `https://localhost:{PORT}/rooms`
+- siden henter data fra databasen via `MeetSlotDbContext`
+- viser møterom med navn, kapasitet og beskrivelse i et kort-basert layout
+
+Dette steget er ment for lokal utvikling og rask verifisering av dataflyt i prosjektet.
+
+### Steg 1 - Oppdater `Program.cs`
+
+Legg til `AddRazorPages()` sammen med de andre services:
+
+```csharp
+builder.Services.AddRazorPages();
+```
+
+Legg til `MapRazorPages()` rett før `app.Run()`:
+
+```csharp
+app.MapRazorPages();
+```
+
+Status na: dette er allerede lagt inn i `Program.cs`.
+
+### Steg 2 - Lag `Pages`-mappen og filene
+
+Opprett:
+- `Pages/Rooms.cshtml`
+- `Pages/Rooms.cshtml.cs`
+
+I dette prosjektet er disse filene allerede opprettet lokalt.
+
+### Steg 3 - Hent møterom fra databasen
+
+I `Pages/Rooms.cshtml.cs` hentes data med `MeetSlotDbContext` fra `_context.MeetingRooms`, og resultatet vises i `Pages/Rooms.cshtml` med:
+- navn
+- kapasitet
+- beskrivelse
+
+I viewet er presentasjonen oppdatert med:
+- toppseksjon (hero) med antall rom og total kapasitet
+- grid av romkort for bedre oversikt
+- enkel lokal styling for rask prototype-visning
+
+### Steg 4 - Direkte routing til `/rooms`
+
+Vi sender brukeren direkte til `/rooms` fra rot-url (`/`) fordi dette er den eneste frontend-siden i dette steget, og den representerer hovedfunksjonen vi vil demonstrere.
+
+Dette gir tre fordeler:
+- unngar tom/hvit side på `/` under lokal testing
+- gjør demo-flyten enklere for teamet (appen åpner rett sted)
+- samsvarer med `launchSettings` som nå bruker `rooms` som `launchUrl`
+
+Implementert i `Program.cs`:
+
+```csharp
+app.MapGet("/", () => Results.Redirect("/rooms"));
+```
+
+### Steg 5 - Filterpills i romoversikt
+
+For a gjøre oversikten mer brukervennlig er det lagt til filterpills i `Rooms.cshtml`.
+
+Brukeren kan filtrere rom visuelt etter kapasitet:
+- Alle
+- Liten (1-4)
+- Medium (5-8)
+- Stor (9+)
+
+Filteret er laget med enkel JavaScript + CSS i samme Razor-side, uten ny backend-logikk.
+Hvert romkort har `data-capacity` slik at filteret kan vise/skjule kort lokalt i nettleseren.
+
+### Steg 6 - Book-knapp og `ComingSoon`-side (under utvikling)
+
+Det er opprettet en egen Razor Page for "under utvikling":
+- `Pages/ComingSoon.cshtml`
+- `Pages/ComingSoon.cshtml.cs`
+
+Siden viser en tydelig og vennlig melding fram til bookingflyten er ferdig koblet, og fungerer som midlertidig målside for booking-knapper.
+
+Status na:
+- `ComingSoon`-siden er implementert og bygger uten feil
+- neste kobling er a sende "Book" fra romkortene til `/comingsoon`
+
+### Kort test lokalt
+
+1. Kjør prosjektet lokalt (`dotnet run` eller fra VS Code)
+2. Åpne nettleser pa `https://localhost:{PORT}/rooms`
+3. Verifiser at listen viser møterom fra databasen
+
+Hvis listen er tom, sjekk at databasen er migrert og at seed-data for `MeetingRooms` finnes.
 
 
 

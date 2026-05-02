@@ -66,13 +66,21 @@ namespace MeetSlot.Data
                     .IsUnique();
 
                 // Seed-data for admin-bruker som utgangspunkt i utvikling.
-                entity.HasData(new AppUser
-                {
-                    Id = 1,
-                    Email = "admin@meetslot.local",
-                    PasswordHash = "$2a$12$hQ4sA2nY5nYjEFfOeL4f9uD8jz6M9H0JQm3M1xwY9dCF2nB4P3sVi",
-                    Role = UserRole.Admin
-                });
+                entity.HasData(
+                    new AppUser
+                    {
+                        Id = 1,
+                        Email = "admin@meetslot.local",
+                        PasswordHash = "$2a$12$hQ4sA2nY5nYjEFfOeL4f9uD8jz6M9H0JQm3M1xwY9dCF2nB4P3sVi",
+                        Role = UserRole.Admin
+                    },
+                    new AppUser
+                    {
+                        Id = 2,
+                        Email = "user@meetslot.local",
+                        PasswordHash = "$2a$11$.8xuNfskTdFy1lx9r8WR4.jHv9ElMXVy8lMEYhz6sJGrUMhyP5V02",
+                        Role = UserRole.User
+                    });
             });
 
             modelBuilder.Entity<Booking>(entity => // Konfigurerer Booking-modellen.

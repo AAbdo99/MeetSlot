@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MeetSlot.Data;
-using MeetSlot.DTO;
+using MeetSlot.Dtos;
 using MeetSlot.Models;
 using MeetSlot.Services;
 
