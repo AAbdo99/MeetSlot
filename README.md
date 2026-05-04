@@ -381,3 +381,60 @@ Hvis listen er tom, sjekk at databasen er migrert og at seed-data for `MeetingRo
 
 
 
+
+
+
+# Docker-oppsett
+
+## 1. Bytt til riktig branch
+Prosjektet kan kjøres lokalt med Docker ved hjelp av `Dockerfile` og `docker-compose.yml`. 
+
+```bash
+git checkout main     
+git pull origin main
+git checkout -b docker-setup
+```  
+
+
+## 2. Bygg og start containerne
+```bash
+docker compose up --build
+```
+Applikasjonen kjører på:   http://localhost:5182
+
+## 3. Kjør Entity Framework migrations
+Første gang containerne startes, er databasen tom. Hvis du får en feil som:
+```bash
+relation "MeetingRooms" does not exist
+```
+kjør EF Core migrations fra prosjektmappen:
+```bash
+ConnectionStrings__DefaultConnection="Host=localhost;Port=5433;Database=meetslot;Username=postgres;Password=postgres" dotnet ef database update
+```
+Dette oppretter databasetabellene og legger inn seed-data.
+
+## 4. Test applikasjonen
+Åpne UI Pages-siden:    http://localhost:5182/rooms  
+Test Booking API-et:    http://localhost:5182/api/Booking  
+Hvis det ikke finnes bookinger ennå, skal responsen være:
+```bash
+[]
+```
+Åpne Swagger:          http://localhost:5182/swagger  
+
+## 5. Testing alle endepunkter
+Eksempler på endepunkter:
+- GET     /api/Booking
+- GET     /api/Booking/{id}
+- POST    /api/Booking
+- DELETE  /api/Booking/{id}
+- GET     /api/Booking/available-slots
+- POST    /api/Auth/register
+- POST    /api/Auth/login
+
+
+
+## 6. Stopp Docker
+```bash
+docker compose down
+```

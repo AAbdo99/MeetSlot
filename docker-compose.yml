@@ -1,0 +1,32 @@
+services:
+  db:
+    image: postgres:16
+    container_name: meetslot-db
+    environment:
+      POSTGRES_DB: meetslot
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - meetslot_pgdata:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: meetslot-api
+    depends_on:
+      - db
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=meetslot;Username=postgres;Password=postgres
+      Jwt__Issuer: MeetSlot
+      Jwt__Audience: MeetSlotUsers
+      Jwt__Key: ThisIsADevelopmentSecretKeyForMeetSlot12345
+    ports:
+      - "5182:8080"
+
+volumes:
+  meetslot_pgdata:
