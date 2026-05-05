@@ -2,11 +2,13 @@ using MeetSlot.Data;
 using MeetSlot.Dtos;
 using MeetSlot.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace MeetSlot.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class BookingController : ControllerBase
     {
         private readonly MeetSlotDbContext _context;
@@ -73,6 +75,7 @@ namespace MeetSlot.Controllers
 
 
         [HttpDelete("{id}")]          //       DELETE /api/Booking/{id}
+        [Authorize(Roles = "Admin")]
         public IActionResult DeleteBooking(int id)
         {
             var booking = _context.Bookings.Find(id); // finner booking med gitt id fra Database

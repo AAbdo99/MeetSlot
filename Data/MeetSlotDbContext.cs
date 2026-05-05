@@ -71,7 +71,7 @@ namespace MeetSlot.Data
                     {
                         Id = 1,
                         Email = "admin@meetslot.local",
-                        PasswordHash = "$2a$12$hQ4sA2nY5nYjEFfOeL4f9uD8jz6M9H0JQm3M1xwY9dCF2nB4P3sVi",
+                        PasswordHash = "$2a$12$uxw4qVhvc1V861Zv.0ZgEur8SbmYNz7nAslvZpxvGLKPl.SYEoet2",
                         Role = UserRole.Admin
                     },
                     new AppUser
