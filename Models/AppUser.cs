@@ -1,5 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace MeetSlot.Models
 {
     // Roller brukt for autorisasjon i systemet.
@@ -12,13 +10,8 @@ namespace MeetSlot.Models
     public class AppUser
     {
         public int Id { get; set; } // Primarnokkel.
-        [Required] // E-post er obligatorisk og brukes for innlogging.
-        [EmailAddress]
-        [MaxLength(256)]
         public required string Email { get; set; }
 
-        [Required]
-        [MaxLength(512)]
         public required string PasswordHash { get; set; } // Hash av passord.
 
         public UserRole Role { get; set; }

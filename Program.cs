@@ -1,9 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using MeetSlot.Data;
+using MeetSlot.Middleware;
+using MeetSlot.Repositories;
+using MeetSlot.Repositories.Interfaces;
 using MeetSlot.Services;
+using MeetSlot.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +18,10 @@ builder.Services.AddDbContext<MeetSlotDbContext>(options =>
 
 // TokenService registreres slik at den kan brukes i controllers via dependency injection
 builder.Services.AddScoped<TokenService>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IBookingRepository, BookingRepository>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IBookingService, BookingService>();
 
 // JWT-autentisering aktiveres kun hvis alle JWT-verdier finnes i konfigurasjon.
 var jwtIssuer = builder.Configuration["Jwt:Issuer"];
@@ -48,6 +57,26 @@ else
 
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    // Samler valideringsfeil i ett felles responsformat for hele API-et.
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        var errors = context.ModelState
+            .Where(entry => entry.Value?.Errors.Count > 0)
+            .ToDictionary(
+                entry => entry.Key,
+                entry => entry.Value!.Errors.Select(error => error.ErrorMessage).ToArray());
+
+        return new BadRequestObjectResult(new
+        {
+            error = "Validering feilet.",
+            status = StatusCodes.Status400BadRequest,
+            traceId = context.HttpContext.TraceIdentifier,
+            details = errors
+        });
+    };
+});
 builder.Services.AddRazorPages();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -61,6 +90,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseMiddleware<RequestLoggingMiddleware>();
+app.UseMiddleware<GlobalExceptionMiddleware>();
 app.UseAuthentication(); // Må komme før UseAuthorization!
 app.UseAuthorization();
 app.MapControllers();
