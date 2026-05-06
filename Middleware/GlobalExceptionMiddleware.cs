@@ -33,6 +33,13 @@ namespace MeetSlot.Middleware
                     throw;
                 }
 
+                _logger.LogWarning(ex,
+                    "App-feil ({StatusCode}) på {Method} {Path}: {Message}",
+                    ex.StatusCode,
+                    context.Request.Method,
+                    context.Request.Path,
+                    ex.Message);
+
                 // Kjente app-feil gir kontrollert statuskode og melding.
                 await WriteErrorResponseAsync(context, ex.StatusCode, ex.Message);
             }
@@ -48,6 +55,8 @@ namespace MeetSlot.Middleware
                 _logger.LogError(ex, "Uventet feil under behandling av request {Method} {Path}",
                     context.Request.Method,
                     context.Request.Path);
+
+                
 
                 await WriteErrorResponseAsync(
                     context,
