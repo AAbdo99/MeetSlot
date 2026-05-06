@@ -89,13 +89,21 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
-app.UseMiddleware<RequestLoggingMiddleware>();
-app.UseMiddleware<GlobalExceptionMiddleware>();
-app.UseAuthentication(); // Må komme før UseAuthorization!
-app.UseAuthorization();
-app.MapControllers();
+// Middleware rekkefølge er viktig!
+app.UseMiddleware<GlobalExceptionMiddleware>();  // Global error handler først (fanger alt)
+app.UseMiddleware<RequestLoggingMiddleware>();  // Logger alle innkommende requests (må komme før auth for å logge også auth-feil, logger request + response, også når det feiler))
+app.UseHttpsRedirection();                     // Håndterer 301-redirect fra http til https (må komme før auth for å unngå at http-requests feiler med 401 uten å bli logget)
+
+// Security:Autentisering og autorisasjon må komme før MapControllers for å sikre at alle API-endepunkter er beskyttet (med mindre de har [AllowAnonymous])
+app.UseAuthentication(); // Må komme før UseAuthorization! 
+app.UseAuthorization();  // Håndterer 403 Forbidden for requests uten gyldig token (må komme etter auth for å fungere)
+
+// Endpoints
+app.MapControllers();    // MapControllers må komme etter UseAuthentication og UseAuthorization for å sikre at alle API-endepunkter er beskyttet (med mindre de har [AllowAnonymous])
 app.MapRazorPages();
 app.MapGet("/", () => Results.Redirect("/rooms"));
+
+// For logging skal logge “raw exception før den blir håndtert”, det må legges RequestLogging først.
+/// Om logging skal logges “final status code etter exception er gjort om til respons”, Så derfor det må legges GlobalException først.
 
 app.Run();
