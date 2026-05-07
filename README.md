@@ -438,3 +438,292 @@ Eksempler på endepunkter:
 ```bash
 docker compose down
 ```
+
+
+
+# Deploy MeetSlot til AWS EC2 med Docker, PostgreSQL og Nginx
+
+## Introduksjon
+
+I denne delen ble MeetSlot-applikasjonen deployert til en AWS EC2-instans.  
+API- og Nginx-images ble hentet direkte fra Docker Hub, mens PostgreSQL ble kjørt som en container på EC2-instansen.
+
+Målet var å gjøre applikasjonen offentlig tilgjengelig via EC2-instansens public IP-adresse, og samtidig bruke Nginx som reverse proxy foran API-et.
+
+---
+
+### Infrastruktur
+
+Følgende infrastruktur ble brukt:
+
+- Egen VPC i AWS
+- EC2-instans med Amazon Linux
+- Security Group konfigurert med:
+  - SSH (22) – kun egen IP
+  - HTTP (80) – offentlig tilgang
+  - Port 8080 / 5182 ble ikke eksponert offentlig i AWS
+- Docker og Docker Compose
+- PostgreSQL-container
+- API-container
+- Nginx-container
+
+---
+## 1. Opprettelse av VPC
+En egen VPC ble opprettet i AWS for å isolere infrastrukturen.
+
+VPC-en ble opprettet med public og private subnets.  
+EC2-instansen ble plassert i et public subnet slik at den kunne nås via SSH og HTTP.  
+
+## 2. Opprettelse av EC2-instans
+En EC2-instans ble opprettet innenfor den nye VPC-en.  
+Instansen ble konfigurert med public IP og riktig Security Group.  
+
+![AWS](./AWS1.png)
+![AWS](./AWS2.png)
+
+## 3. Tilkobling til EC2 via SSH 
+
+Private key ble gitt riktige rettigheter:  
+`Terminal `
+```
+ikram@Ikram-sin-MacBook-Pro Downloads % ls
+meetslot-key.pem
+
+chmod 400 meetslot-key.pem
+ssh -i meetslot-key.pem ec2-user@35.177.93.40
+```
+
+## 4. Installasjon av Docker på EC2
+Docker ble installert på Amazon Linux:  
+**SSH Terminal**:
+```
+sudo yum update -y
+sudo yum install docker -y        
+sudo systemctl start docker       
+sudo systemctl enable docker      
+sudo usermod -aG docker ec2-user 
+ 
+exit
+```
+Etter reinstallering av SSH-tilkobling ble Docker verifisert:
+```
+ssh -i meetslot-key.pem ec2-user@35.177.93.40
+```
+**SSH Terminal**:
+```
+[ec2-user@ip-10-0-12-21 ~]$ docker --version
+Docker version 25.0.14, build 0bab007
+[ec2-user@ip-10-0-12-21 ~]$ docker ps
+CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
+```
+
+## 5. Installasjon av Docker Compose
+Docker Compose v2 ble installert manuelt
+**SSH Terminal**:
+```
+sudo mkdir -p /usr/local/lib/docker/cli-plugins
+sudo curl -SL https://github.com/docker/compose/releases/download/v2.29.2/docker-compose-linux-x86_64 \
+  -o /usr/local/lib/docker/cli-plugins/docker-compose
+sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+```
+
+Verifisering:
+```
+ec2-user@ip-10-0-12-21 ~]$ docker compose version
+Docker Compose version v2.29.2
+```
+
+
+## 6. Opprettelse av Nginx-image
+For å gjøre API-et tilgjengelig på port 80 ble Nginx brukt som reverse proxy.
+Det ble opprettet en egen mappe for Nginx:
+```
+nginx/
+  default.conf
+  Dockerfile
+```
+
+Nginx-image ble bygget og pushet til Docker Hub:
+```
+docker build -t ikramenwer/meetslot-nginx:latest ./nginx
+docker push ikramenwer/meetslot-nginx:latest
+```
+
+
+## 7. Opprettelse av docker-compose.yml på EC2
+Følgende filer ble brukt på EC2:  
+- docker-compose.yml
+- meetslot_migration.sql 
+
+Opprettelse av `docker-compose.yml` på EC2:
+```
+[ec2-user@ip-10-0-12-21 ~]$ nano docker-compose.yml
+```
+
+
+`docker-compose.yml`
+
+```yml
+services:
+  db:
+    image: postgres:16
+    container_name: meetslot-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: meetslot
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - meetslot_pgdata:/var/lib/postgresql/data
+
+  api:
+    image: ikramenwer/meetslot-api:latest
+    container_name: meetslot-api
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=meetslot;Username=postgres;Password=postgres
+      Jwt__Issuer: MeetSlot
+      Jwt__Audience: MeetSlotUsers
+      Jwt__Key: ThisIsADevelopmentSecretKeyForMeetSlot12345
+
+  nginx:
+    image: ikramenwer/meetslot-nginx:latest
+    container_name: meetslot-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+
+volumes:
+  meetslot_pgdata:
+ ``` 
+
+CTRL+O → Enter → CTRL+X
+
+
+verifisering:
+```
+cat docker-compose.yml
+```
+
+## 8. Docker Compose-konfigurasjon
+`docker-compose.yml` bruker images fra **Docker Hub**:  
+- ikramenwer/meetslot-api:latest
+- ikramenwer/meetslot-nginx:latest  
+
+
+Løsningen startes med:
+```
+docker compose pull
+docker compose up -d
+```
+Dette starter:
+- PostgreSQL-container
+- API-container
+- Nginx-container 
+
+
+## 9. Verifisering på EC2
+Container-status:
+```
+[ec2-user@ip-10-0-12-21 ~]$ docker ps
+CONTAINER ID   IMAGE                              COMMAND                  CREATED        STATUS        PORTS                               NAMES
+40449a4bf592   ikramenwer/meetslot-nginx:latest   "/docker-entrypoint.…"   16 hours ago   Up 16 hours   0.0.0.0:80->80/tcp, :::80->80/tcp   meetslot-nginx
+a90284be4aa2   ikramenwer/meetslot-api:latest     "dotnet MeetSlot.dll"    16 hours ago   Up 16 hours   8080/tcp                            meetslot-api
+574797e68c28   postgres:16                        "docker-entrypoint.s…"   16 hours ago   Up 16 hours   5432/tcp                            meetslot-db
+```
+
+## 10. Kjøring av database migrations på EC2
+
+Etter at containerne ble startet, ble applikasjonen testet via `/rooms`.  
+Først oppstod følgende feil i API-loggene:
+
+```txt
+relation "MeetingRooms" does not exist
+```
+Dette betydde at PostgreSQL-databasen var opprettet, men at Entity Framework migrations ikke var kjørt.
+
+API-containeren inneholdt kun .NET runtime, og derfor kunne ikke dotnet ef database update kjøres direkte inne i containeren:
+```
+No .NET SDKs were found.
+```
+Derfor ble det laget et SQL-script lokalt fra prosjektmappen:
+```
+dotnet ef migrations script -o meetslot_migration.sql
+```
+SQL-filen ble overført til EC2:
+```
+scp -i ~/Downloads/meetslot-key.pem meetslot_migration.sql ec2-user@35.177.93.40:~
+```
+På EC2 ble filen kontrollert:
+```
+[ec2-user@ip-10-0-12-21 ~]$ ls
+docker-compose.yml  meetslot_migration.sql
+```
+SQL-filen ble kopiert inn i PostgreSQL-containeren:
+```
+docker cp meetslot_migration.sql meetslot-db:/meetslot_migration.sql
+```
+Migration-scriptet ble kjørt mot databasen:
+```
+docker exec -it meetslot-db psql -U postgres -d meetslot -f /meetslot_migration.sql
+```
+
+
+## 11. Testing
+
+Nettsiden ble testet lokalt på EC2:
+
+```bash
+curl http://localhost/rooms
+```
+Samme side ble også testet i nettleser via public IP:
+```
+http://35.177.93.40/rooms
+```
+
+### 1.Testing lokalt på EC2:
+```
+[ec2-user@ip-10-0-12-21 ~]$ curl -X POST http://localhost/api/Auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@meetslot.local","password":"Admin123!"}'
+{"token":"eyJhbGciOiJIUzI1NiIsInR..."}
+
+[ec2-user@ip-10-0-12-21 ~]$ TOKEN="eyJhbGciOiJIUzI1NiIsInR..."
+
+[ec2-user@ip-10-0-12-21 ~]$ curl -X GET http://localhost/api/Booking/1 \
+  -H "Authorization: Bearer $TOKEN"
+{"id":1,"title":"Valid booking test","createdAtUtc":"2026-05-07T02:22:15.068993Z","startTime":"2026-05-10T10:00:00Z","endTime":"2026-05-10T11:00:00Z","meetingRoomId":1,"meetingRoom":null,"appUserId":1,"appUser":null}
+```
+
+### 2. Testing via Public IP via Postman
+
+POST http://35.177.93.40/api/Auth/register
+
+POST http://35.177.93.40/api/Auth/login
+
+POST http://35.177.93.40/api/Booking
+
+DELETE http://35.177.93.40/api/Booking/{id}
+
+GET http://35.177.93.40/api/Booking
+
+GET http://35.177.93.40/api/Booking/{id}
+
+GET http://35.177.93.40/api/Booking/available-slots?meetingRoomId={id}&date={yyyy-MM-dd}
+
+
+## Konklusjon
+
+MeetSlot ble deployert til AWS EC2 med Docker Compose.  
+Løsningen kjører med PostgreSQL, API og Nginx som separate containere.
+
+Nginx eksponerer applikasjonen på port 80, mens API-et kjører internt på port 8080.  
+PostgreSQL-databasen kjører internt i Docker-nettverket, og Entity Framework migrations ble kjørt med et SQL-script.
+
+Resultatet er at applikasjonen er tilgjengelig via EC2-instansens public IP, og både nettsiden og API-endepunktene fungerer.
