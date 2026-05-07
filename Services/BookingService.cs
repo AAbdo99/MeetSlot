@@ -10,19 +10,35 @@ namespace MeetSlot.Services
     public class BookingService : IBookingService
     {
         private readonly IBookingRepository _bookingRepository;
+        private readonly ILogger<BookingService> _logger;
 
-        public BookingService(IBookingRepository bookingRepository)
+        public BookingService(
+            IBookingRepository bookingRepository,
+            ILogger<BookingService> logger)
         {
             _bookingRepository = bookingRepository;
+            _logger = logger;
         }
 
         public async Task<Booking> CreateBookingAsync(CreateBookingDto dto, int currentUserId)
         {
+            _logger.LogInformation(
+                "Create booking requested. RoomId={RoomId}, StartTime={StartTime}, EndTime={EndTime}, UserId={UserId}",
+                dto.MeetingRoomId,
+                dto.StartTime,
+                dto.EndTime,
+                currentUserId);
+
             // SIKKERHET: currentUserId kommer fra JWT-claim (controller), aldri fra klientens body.
             // Bekrefter at møterommet finnes før vi bygger booking-objektet.
             var meetingRoom = await _bookingRepository.GetMeetingRoomByIdAsync(dto.MeetingRoomId);
             if (meetingRoom == null)
             {
+                _logger.LogWarning(
+                    "Create booking rejected. Meeting room not found. RoomId={RoomId}, UserId={UserId}",
+                    dto.MeetingRoomId,
+                    currentUserId);
+
                 // Meldingsnøkkel: ExceptionMessages.Booking.MoteromIkkeFunnet
                 throw new NotFoundException(ExceptionMessages.Booking.MoteromIkkeFunnet);
             }
@@ -31,6 +47,10 @@ namespace MeetSlot.Services
             var appUser = await _bookingRepository.GetUserByIdAsync(currentUserId);
             if (appUser == null)
             {
+                _logger.LogWarning(
+                    "Create booking rejected. User not found. UserId={UserId}",
+                    currentUserId);
+
                 // Meldingsnøkkel: ExceptionMessages.Booking.BrukerIkkeFunnet
                 throw new NotFoundException(ExceptionMessages.Booking.BrukerIkkeFunnet);
             }
@@ -43,6 +63,13 @@ namespace MeetSlot.Services
 
             if (hasConflict)
             {
+                _logger.LogWarning(
+                    "Create booking rejected. Time conflict. RoomId={RoomId}, StartTime={StartTime}, EndTime={EndTime}, UserId={UserId}",
+                    dto.MeetingRoomId,
+                    dto.StartTime,
+                    dto.EndTime,
+                    currentUserId);
+
                 // Meldingsnøkkel: ExceptionMessages.Booking.Tidskonflikt
                 throw new ConflictException(ExceptionMessages.Booking.Tidskonflikt);
             }
@@ -59,27 +86,64 @@ namespace MeetSlot.Services
             };
 
             await _bookingRepository.AddAsync(booking);
+            _logger.LogInformation(
+                "Booking created. BookingId={BookingId}, RoomId={RoomId}, UserId={UserId}",
+                booking.Id,
+                booking.MeetingRoomId,
+                booking.AppUserId);
+
             return booking;
         }
 
         public async Task DeleteBookingAsync(int id, int currentUserId, bool isAdmin)
         {
-            // SIKKERHET: Ikke-admin slår bare opp booking med eget userId-filter i databasen.
-            var booking = isAdmin
-                ? await _bookingRepository.GetByIdAsync(id)
-                : await _bookingRepository.GetByIdForUserAsync(id, currentUserId);
+            _logger.LogInformation(
+                "Delete booking requested. BookingId={BookingId}, CallerUserId={CallerUserId}, IsAdmin={IsAdmin}",
+                id,
+                currentUserId,
+                isAdmin);
+
+            // SIKKERHET: Ved sletting skiller vi mellom booking som ikke finnes (404) og manglende eierskap (403).
+            var booking = await _bookingRepository.GetByIdAsync(id);
 
             if (booking == null)
             {
+                _logger.LogWarning(
+                    "Delete booking rejected. Booking not found. BookingId={BookingId}, CallerUserId={CallerUserId}, IsAdmin={IsAdmin}",
+                    id,
+                    currentUserId,
+                    isAdmin);
+
                 // Meldingsnøkkel: ExceptionMessages.Booking.BookingIkkeFunnet
                 throw new NotFoundException(ExceptionMessages.Booking.BookingIkkeFunnet);
             }
 
+            if (!isAdmin && booking.AppUserId != currentUserId)
+            {
+                _logger.LogWarning(
+                    "Delete booking rejected. Caller does not own booking. BookingId={BookingId}, OwnerUserId={OwnerUserId}, CallerUserId={CallerUserId}",
+                    id,
+                    booking.AppUserId,
+                    currentUserId);
+
+                throw new ForbiddenException(ExceptionMessages.Autentisering.ManglerTilgang);
+            }
+
             await _bookingRepository.RemoveAsync(booking);
+            _logger.LogInformation(
+                "Booking deleted. BookingId={BookingId}, CallerUserId={CallerUserId}, IsAdmin={IsAdmin}",
+                id,
+                currentUserId,
+                isAdmin);
         }
 
         public Task<List<Booking>> GetBookingsAsync(int currentUserId, bool isAdmin)
         {
+            _logger.LogInformation(
+                "List bookings requested. CallerUserId={CallerUserId}, IsAdmin={IsAdmin}",
+                currentUserId,
+                isAdmin);
+
             // SIKKERHET: Ikke-admin får kun egne bookinger, filtrert i query mot databasen.
             return isAdmin
                 ? _bookingRepository.ListAsync()
@@ -88,6 +152,12 @@ namespace MeetSlot.Services
 
         public async Task<Booking> GetBookingByIdAsync(int id, int currentUserId, bool isAdmin)
         {
+            _logger.LogInformation(
+                "Get booking requested. BookingId={BookingId}, CallerUserId={CallerUserId}, IsAdmin={IsAdmin}",
+                id,
+                currentUserId,
+                isAdmin);
+
             // SIKKERHET: Ikke-admin kan bare hente booking hvis den eies av currentUserId.
             var booking = isAdmin
                 ? await _bookingRepository.GetByIdAsync(id)
@@ -95,6 +165,12 @@ namespace MeetSlot.Services
 
             if (booking == null)
             {
+                _logger.LogWarning(
+                    "Get booking rejected. Booking not found or hidden by ownership. BookingId={BookingId}, CallerUserId={CallerUserId}, IsAdmin={IsAdmin}",
+                    id,
+                    currentUserId,
+                    isAdmin);
+
                 // SIKKERHET: Returnerer NotFound også ved manglende eierskap (unngår ID-enumerering).
                 // Meldingsnøkkel: ExceptionMessages.Booking.BookingIkkeFunnet
                 throw new NotFoundException(ExceptionMessages.Booking.BookingIkkeFunnet);
@@ -105,9 +181,19 @@ namespace MeetSlot.Services
 
         public async Task<List<AvailableSlotDto>> GetAvailableSlotsAsync(int meetingRoomId, DateTime date)
         {
+            _logger.LogInformation(
+                "Available slots requested. RoomId={RoomId}, Date={Date}",
+                meetingRoomId,
+                date.Date);
+
             var meetingRoom = await _bookingRepository.GetMeetingRoomByIdAsync(meetingRoomId);
             if (meetingRoom == null)
             {
+                _logger.LogWarning(
+                    "Available slots rejected. Meeting room not found. RoomId={RoomId}, Date={Date}",
+                    meetingRoomId,
+                    date.Date);
+
                 // Meldingsnøkkel: ExceptionMessages.Booking.MoteromIkkeFunnet
                 throw new NotFoundException(ExceptionMessages.Booking.MoteromIkkeFunnet);
             }

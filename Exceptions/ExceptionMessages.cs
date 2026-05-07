@@ -11,6 +11,9 @@ namespace MeetSlot.Exceptions
 
             // Brukes av: UnauthorizedException i AuthService.LoginAsync
             public const string UgyldigeInnloggingsdata = "Ugyldig e-postadresse eller passord";
+
+            // Brukes av: ForbiddenException ved manglende tilgang til ressurs.
+            public const string ManglerTilgang = "Du har ikke tilgang til denne ressursen";
         }
 
         public static class Booking

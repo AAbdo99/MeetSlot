@@ -106,8 +106,55 @@ Dette gjenstar:
 ## Merknad
 Denne README-en er ment som en arbeidsfil for teamet underveis i utviklingen. Den kan senere erstattes med en mer formell README for innlevering, dokumentasjon eller publisering pa GitHub.
 
+__________________________________________________________________________________________
 
+# Student 1 – Auth/Security + Middleware/Logging 
 
+## Leveranser (kort oppsummert)
+Dette er implementert og testet:
+
+### 1. Auth (JWT)
+- `POST /api/auth/register` – oppretter bruker (201 Created)
+- `POST /api/auth/login` – logger inn og returnerer JWT-token (200 OK)
+- Postman-oppsett med miljøvariabler (`baseUrl`, `token`) slik at vi slipper å copy/paste token for hver request.
+
+### 2. Rolle-/tilgangskontroll (RBAC)
+- Endepunkter krever token der det er satt `[Authorize]`.
+- Når en bruker mangler tilgang til en handling (f.eks. delete uten rettigheter), returneres **403 Forbidden** (som forventet).
+
+### 3. Global feilhåndtering (Middleware)
+- `GlobalExceptionMiddleware` fanger `AppException` og returnerer et konsistent JSON-feilformat:
+  - `{ error, status, traceId }`
+- Ukjente feil returnerer 500 uten interne detaljer, men med traceId.
+
+### 4. Logging (ILogger) i alle lag
+Logger er lagt inn og brukes i:
+- Controllers: `AuthController`, `BookingController`
+- Services: `AuthService`, `BookingService`
+- Repositories: `UserRepository`, `BookingRepository`
+- Middleware: request logging + exception logging
+
+Dette gir en tydelig logg av:
+- hvem som forsøkte hva (userId/bookingId/roomId)
+- hvorfor noe ble avvist (404/403/409)
+- og traceId for feilsøking.
+
+---
+
+## Hvordan teste – Postman
+
+### Base URL
+Når prosjektet kjører i Docker:
+- `http://localhost:5182`
+
+### 1) Login og lagre token automatisk
+1. Lag request: `POST {{baseUrl}}/api/auth/login`
+2. Body (raw JSON):
+```json
+{
+  "email": "admin@meetslot.local",
+  "password": "Admin123!"
+}
 
 
 
