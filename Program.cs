@@ -11,6 +11,9 @@ using MeetSlot.Services;
 using MeetSlot.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.SetMinimumLevel(LogLevel.Information);
 
 // Database
 builder.Services.AddDbContext<MeetSlotDbContext>(options =>
@@ -106,4 +109,13 @@ app.MapGet("/", () => Results.Redirect("/rooms"));
 // For logging skal logge “raw exception før den blir håndtert”, det må legges RequestLogging først.
 /// Om logging skal logges “final status code etter exception er gjort om til respons”, Så derfor det må legges GlobalException først.
 
+app.MapGet("/log-test", (ILogger<Program> logger) =>
+{
+    logger.LogWarning("TEST LOGG: /log-test ble kalt");
+    return Results.Ok("Log test kjørt");
+});
+
+
+
 app.Run();
+
