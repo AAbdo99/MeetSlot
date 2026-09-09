@@ -3,6 +3,8 @@
 MeetSlot er et bookingsystem for moterom bygget med ASP.NET Core 8.
 Prosjektet tilbyr JWT-autentisering, rolle- og policybasert tilgangskontroll, bookinglogikk med konfliktkontroll, global feilhondtering og request-logging.
 
+> **Gruppeprosjekt (4 studenter).** Mitt hovedansvar var datalaget: domenemodeller, `DbContext`, databasekonstrainter, migrasjoner og seed-data med EF Core mot PostgreSQL. Oppsett av READ.ME og stemt som prosjektleder. Resten av teamets bidrag: autentisering/sikkerhet, bookinglogikk og testing/DevOps – er beskrevet under «Team» nederst.
+
 ## Funksjonalitet
 
 - Registrering og innlogging med JWT
